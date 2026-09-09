@@ -6,5 +6,5 @@ public sealed record PartnerTransactionRequest
     public string? TransactionReference { get; init; }
     public decimal? Amount { get; init; }
     public string? Currency { get; init; }
-    public DateTimeOffset? TimeStamp { get; init; }
+    public DateTimeOffset? Timestamp { get; init; }
 };
