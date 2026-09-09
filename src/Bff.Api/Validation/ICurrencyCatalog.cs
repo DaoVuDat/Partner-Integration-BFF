@@ -1,4 +1,4 @@
-using Bff.Api.Options;
+using Bff.Api.Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
 namespace Bff.Api.Validation;

@@ -1,5 +1,6 @@
 using Bff.Api.Endpoints;
-using Bff.Api.Options;
+using Bff.Api.Infrastructure;
+using Bff.Api.Infrastructure.Options;
 using Bff.Api.Validation;
 using FluentValidation;
 
@@ -12,6 +13,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.Configure<PartnerOptions>(builder.Configuration.GetSection("Partner"));
 builder.Services.AddSingleton<ICurrencyCatalog, ConfiguredCurrencyCatalog>();
 builder.Services.AddValidatorsFromAssemblyContaining<PartnerTransactionRequestValidator>();
+
+
+builder.Services.AddPartnerVerification(builder.Configuration);
+
 
 builder.Services.AddHealthChecks();
 

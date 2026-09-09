@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace Bff.Api.Options;
+namespace Bff.Api.Infrastructure.Options;
 
 public sealed class PartnerOptions
 {

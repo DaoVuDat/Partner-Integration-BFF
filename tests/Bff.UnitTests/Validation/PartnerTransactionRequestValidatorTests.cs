@@ -1,3 +1,4 @@
+using Bff.Api.Infrastructure.Options;
 using Bff.UnitTests.TestSupport;
 
 namespace Bff.UnitTests.Validation;
