@@ -1,0 +1,13 @@
+### GET request to example server
+POST http://localhost:5046/api/v1/partner/transactions
+Content-Type: application/json
+
+{
+  "partnerId": "P-1001",
+  "transactionReference": "TXN-99823",
+  "amount": 250.00,
+  "currency": "USD",
+  "timestamp": "2024-05-10T14:30:00Z"
+}
+
+###
