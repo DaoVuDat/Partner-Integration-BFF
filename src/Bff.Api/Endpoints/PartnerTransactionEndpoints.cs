@@ -15,7 +15,8 @@ public static class PartnerTransactionEndpoints
 
     }
 
-    private static async Task<IResult> HandleAsync(
+    // internal, not private: the unit tests call this handler directly, without a host.
+    internal static async Task<IResult> HandleAsync(
         PartnerTransactionRequest request,
         IValidator<PartnerTransactionRequest> validator,
         IPartnerVerificationClient verificationClient,

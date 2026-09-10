@@ -1,5 +1,6 @@
 using System.Net;
 using Polly.CircuitBreaker;
+using Polly.Timeout;
 
 namespace Bff.Api.Partners;
 
@@ -31,10 +32,12 @@ public sealed class HttpPartnerVerificationClient(HttpClient http, ILogger<HttpP
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            // Timed out (not caller cancellation) — the pipeline gave up.
+            // Cancelled by something other than the caller — treat as a timeout, not a crash.
             return PartnerVerificationResult.Unavailable;
         }
-        catch (Exception ex) when (ex is HttpRequestException or BrokenCircuitException)
+        // TimeoutRejectedException is how the Polly pipeline surfaces both the per-attempt and
+        // the total timeout; it is NOT an OperationCanceledException, so the filter above misses it.
+        catch (Exception ex) when (ex is HttpRequestException or BrokenCircuitException or TimeoutRejectedException)
         {
             log.LogWarning(ex, "Verification unavailable for {PartnerId}", partnerId);
             return PartnerVerificationResult.Unavailable;

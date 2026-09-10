@@ -37,5 +37,23 @@ public class PartnerTransactionRequestValidatorTests
     [Fact]
     public void Rejects_missing_partner_id() =>
         Assert.False(CreateSut().Validate(PartnerTransactionRequestFactory.Valid()with { PartnerId = null }).IsValid);
-    
+
+    [Fact]
+    public void Rejects_a_missing_amount()
+    {
+        var result = CreateSut().Validate(PartnerTransactionRequestFactory.Valid() with { Amount = null });
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.ErrorMessage == "amount is required");
+    }
+
+    [Theory]
+    [InlineData(250.001)]
+    [InlineData(0.005)]
+    public void Rejects_more_than_two_decimal_places(decimal amount) =>
+        Assert.False(CreateSut().Validate(PartnerTransactionRequestFactory.Valid() with { Amount = amount }).IsValid);
+
+    [Fact]
+    public void Rejects_a_missing_timestamp() =>
+        Assert.False(CreateSut().Validate(PartnerTransactionRequestFactory.Valid() with { Timestamp = null }).IsValid);
 }

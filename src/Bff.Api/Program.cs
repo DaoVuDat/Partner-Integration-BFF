@@ -10,6 +10,7 @@ using RabbitMQ.Client;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>(); // Adding Global Exception Handler
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSingleton(TimeProvider.System);
@@ -38,6 +39,8 @@ builder.Services.AddSingleton<ITransactionPublisher, RabbitMqTransactionPublishe
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+app.UseExceptionHandler();
 
 app.MapHealthChecks("/health/live");
 app.MapPartnerTransaction();

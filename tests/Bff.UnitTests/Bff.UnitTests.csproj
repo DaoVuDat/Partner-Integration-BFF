@@ -7,6 +7,9 @@
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+
+    <!-- Applied automatically, so `dotnet test` needs no settings flag on the command line. -->
+    <RunSettingsFilePath>$(MSBuildThisFileDirectory)..\..\coverlet.runsettings</RunSettingsFilePath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,10 +32,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Bff.Api\Bff.Api.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Message\" />
   </ItemGroup>
 
 </Project>

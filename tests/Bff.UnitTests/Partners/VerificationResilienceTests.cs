@@ -28,6 +28,49 @@ public class VerificationResilienceTests
         }
     }
 
+    // A transport that fails the way a network fails, rather than answering with a status.
+    private sealed class FaultingHandler(Func<Exception>? fault = null, TimeSpan? delay = null) : HttpMessageHandler
+    {
+        public int Attempts { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct)
+        {
+            Attempts++;
+            if (delay is { } d) await Task.Delay(d, ct);       // honours ct, so a timeout can cut it short
+            throw fault?.Invoke() ?? new HttpRequestException("connection refused");
+        }
+    }
+
+    // Answers 200 with a caller-supplied payload, to exercise how the body is read.
+    private sealed class BodyHandler(string json) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage r, CancellationToken ct) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(json, Encoding.UTF8, "application/json")
+            });
+    }
+
+    private static IPartnerVerificationClient BuildWith(HttpMessageHandler handler, string attemptTimeout = "00:00:01",
+                                                        string totalTimeout = "00:00:05")
+    {
+        var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Verification:BaseUrl"]          = "http://verification.test",
+            ["Verification:MaxRetryAttempts"] = "1",             // keep the failure tests quick
+            ["Verification:BaseDelay"]        = "00:00:00.001",
+            ["Verification:AttemptTimeout"]   = attemptTimeout,
+            ["Verification:TotalTimeout"]     = totalTimeout,
+        }).Build();
+
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddPartnerVerification(config)
+                .ConfigureHttpClientDefaults(b => b.ConfigurePrimaryHttpMessageHandler(() => handler));
+
+        return services.BuildServiceProvider().GetRequiredService<IPartnerVerificationClient>();
+    }
+
     private static (IPartnerVerificationClient Client, SequenceHandler Handler) Build(params HttpStatusCode[] s)
     {
         var handler = new SequenceHandler(s);
@@ -82,5 +125,53 @@ public class VerificationResilienceTests
 
         Assert.Equal(PartnerVerificationResult.NotVerified, result);
         Assert.Equal(1, handler.Attempts);   // 404 is an answer, not a failure
+    }
+
+    [Fact]
+    public async Task Reports_unavailable_when_the_connection_never_succeeds()
+    {
+        var handler = new FaultingHandler(() => new HttpRequestException("connection refused"));
+
+        var result = await BuildWith(handler).VerifyAsync("P-1001");
+
+        // The exception must not escape: an unreachable partner is a 503, not a 500.
+        Assert.Equal(PartnerVerificationResult.Unavailable, result);
+        Assert.Equal(2, handler.Attempts);   // 1 initial + 1 retry
+    }
+
+    [Fact]
+    public async Task Reports_unavailable_when_every_attempt_times_out()
+    {
+        // Each attempt hangs well past AttemptTimeout, and the retry runs the total past TotalTimeout.
+        var handler = new FaultingHandler(delay: TimeSpan.FromSeconds(30));
+
+        var result = await BuildWith(handler, attemptTimeout: "00:00:00.100", totalTimeout: "00:00:00.400")
+                        .VerifyAsync("P-1001");
+
+        Assert.Equal(PartnerVerificationResult.Unavailable, result);
+    }
+
+    [Fact]
+    public async Task Propagates_caller_cancellation_instead_of_reporting_it_as_unavailable()
+    {
+        var handler = new FaultingHandler(delay: TimeSpan.FromSeconds(30));
+        using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
+
+        // The `when (!ct.IsCancellationRequested)` filter exists for exactly this: a client that
+        // hung up is not a partner outage, and must not be logged or surfaced as one.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => BuildWith(handler, totalTimeout: "00:00:30").VerifyAsync("P-1001", cts.Token));
+    }
+
+    [Theory]
+    // A 200 is not a yes. Only isActive:true is a yes — anything else is a business rejection.
+    [InlineData("{\"partnerId\":\"P-1001\",\"isActive\":false}")]
+    [InlineData("null")]
+    [InlineData("{}")]
+    public async Task Treats_a_200_that_is_not_an_active_partner_as_not_verified(string payload)
+    {
+        var result = await BuildWith(new BodyHandler(payload)).VerifyAsync("P-1001");
+
+        Assert.Equal(PartnerVerificationResult.NotVerified, result);
     }
 }
