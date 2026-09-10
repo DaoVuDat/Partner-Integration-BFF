@@ -12,6 +12,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>(); // Adding Global Exception Handler
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();   // partners consume this BFF, so the contract is published
 
 builder.Services.AddSingleton(TimeProvider.System);
 
@@ -47,6 +48,12 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 
 app.UseExceptionHandler();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.MapHealthChecks("/health/live");
 app.MapPartnerTransaction();

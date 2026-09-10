@@ -11,8 +11,13 @@ public static class PartnerTransactionEndpoints
     {
         var group = app.MapGroup("/api/v1/partner").WithTags("Partner");
 
-        group.MapPost("/transactions", HandleAsync);
-
+        group.MapPost("/transactions", HandleAsync)
+             .WithName("SubmitPartnerTransaction")
+             .WithSummary("Submit a partner transaction for asynchronous processing.")
+             .Produces<PartnerTransactionAcceptedResponse>(StatusCodes.Status202Accepted)
+             .ProducesValidationProblem()
+             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
     }
 
     // internal, not private: the unit tests call this handler directly, without a host.
@@ -55,10 +60,7 @@ public static class PartnerTransactionEndpoints
         await publisher.PublishAsync(message, ct);
         
         // Response to client with status code 202
-        return Results.Accepted(value: new
-        {
-            request.TransactionReference,
-            status = "Accepted"
-        });
+        return Results.Accepted(
+            value: new PartnerTransactionAcceptedResponse(request.TransactionReference!, "Accepted"));
     }
 }

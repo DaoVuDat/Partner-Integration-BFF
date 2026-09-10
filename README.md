@@ -41,6 +41,7 @@ docker compose up --build
 | | |
 |---|---|
 | API | http://localhost:8080 |
+| Swagger UI | http://localhost:8080/swagger |
 | Verification mock | http://localhost:8081 |
 | RabbitMQ UI | http://localhost:15672 (guest/guest) |
 
