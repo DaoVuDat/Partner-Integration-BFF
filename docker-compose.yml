@@ -16,8 +16,8 @@ services:
     build:
       context: . 
       dockerfile: src/Verification.Mock/Dockerfile
-#    ports:
-#      - "8081:8080"
+    ports:
+      - "8081:8080"
 
   bff-api:
     container_name: shop-bff-api
@@ -30,6 +30,12 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       RabbitMq__ConnectionString: amqp://guest:guest@rabbitmq:5672
       Verification__BaseUrl: http://verification-mock:8080
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8080/health/live" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     depends_on:
       rabbitmq:
         condition: service_healthy
