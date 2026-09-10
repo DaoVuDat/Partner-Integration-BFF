@@ -39,7 +39,7 @@ public class RabbitMqTransactionPublisher: ITransactionPublisher, IAsyncDisposab
             var props = new BasicProperties
             {
                 Persistent   = true,                    // survive a broker restart
-                MessageId    = message.EventId,         // use PartnerId here
+                MessageId    = message.EventId,         // "{partnerId}:{transactionReference}" — the consumer's dedupe key
                 ContentType  = "application/json",
                 Type         = nameof(PartnerTransactionAccepted),
                 Timestamp    = new AmqpTimestamp(message.AcceptedAt.ToUnixTimeSeconds())

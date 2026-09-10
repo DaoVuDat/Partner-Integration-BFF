@@ -23,14 +23,27 @@ public class PartnerTransactionAcceptedTests
     }
 
     [Fact]
-    public void Uses_the_transaction_reference_as_the_event_id_so_consumers_can_deduplicate()
+    public void Scopes_the_event_id_to_the_partner_so_consumers_can_deduplicate()
     {
         var evt = PartnerTransactionAccepted.From(
-            PartnerTransactionRequestFactory.Valid() with { TransactionReference = "TXN-42" }, AcceptedAt);
+            PartnerTransactionRequestFactory.Valid() with { PartnerId = "P-1001", TransactionReference = "TXN-42" },
+            AcceptedAt);
 
         // Delivery is at-least-once; a per-call GUID here would make dedupe impossible.
-        Assert.Equal("TXN-42", evt.EventId);
-        Assert.Equal(evt.TransactionReference, evt.EventId);
+        Assert.Equal("P-1001:TXN-42", evt.EventId);
+    }
+
+    [Fact]
+    public void Gives_two_partners_distinct_event_ids_for_the_same_transaction_reference()
+    {
+        var request = PartnerTransactionRequestFactory.Valid() with { TransactionReference = "TXN-1" };
+
+        var first  = PartnerTransactionAccepted.From(request with { PartnerId = "P-1001" }, AcceptedAt);
+        var second = PartnerTransactionAccepted.From(request with { PartnerId = "P-2002" }, AcceptedAt);
+
+        // transactionReference is unique per partner, not globally. Collapsing these would make
+        // a consumer deduping on EventId silently drop the second partner's transaction.
+        Assert.NotEqual(first.EventId, second.EventId);
     }
 
     [Theory]

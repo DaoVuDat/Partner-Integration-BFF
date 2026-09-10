@@ -45,7 +45,7 @@ public class RabbitMqTransactionPublisherTests
 
     private static PartnerTransactionAccepted Event(string reference = "TXN-99823") => new()
     {
-        EventId              = reference,
+        EventId              = $"P-1001:{reference}",
         TransactionReference = reference,
         PartnerId            = "P-1001",
         Amount               = 250.00m,
@@ -105,14 +105,14 @@ public class RabbitMqTransactionPublisherTests
     }
 
     [Fact]
-    public async Task Carries_the_transaction_reference_as_MessageId_for_consumer_deduplication()
+    public async Task Carries_the_event_id_as_MessageId_for_consumer_deduplication()
     {
         var h = Build();
 
         await h.Publisher.PublishAsync(Event("TXN-42"));
 
         var (_, _, _, props, _) = CapturePublish(h.Channel);
-        Assert.Equal("TXN-42", props.MessageId);   // at-least-once delivery needs a stable key
+        Assert.Equal("P-1001:TXN-42", props.MessageId);   // at-least-once delivery needs a stable key
         Assert.Equal("application/json", props.ContentType);
         Assert.Equal(nameof(PartnerTransactionAccepted), props.Type);
     }

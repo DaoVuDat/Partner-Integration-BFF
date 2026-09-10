@@ -28,8 +28,9 @@ partner ──HTTP──> Bff.Api ──HTTP──> Verification.Mock
   production thresholds would need to account for expected failures and traffic.
 - **Reliable messaging:** Durable RabbitMQ topology, persistent messages, and publisher confirms
   ensure `202` is returned only after broker acknowledgement. Mandatory publishing surfaces
-  unroutable messages; publish failures return `500`. `transactionReference` is also the message
-  ID, enabling consumer-side deduplication when retries produce duplicates.
+  unroutable messages; publish failures return `500`. The message ID is
+  `{partnerId}:{transactionReference}` — partner-scoped, because a reference is only unique
+  within one partner — enabling consumer-side deduplication when retries produce duplicates.
 
 ## Running the project
 
@@ -72,7 +73,7 @@ Send it again.
 dotnet test
 ```
 
-61 tests, about a second, no Docker needed.
+62 tests, about a second, no Docker needed.
 
 Coverage is collected automatically via `coverlet.runsettings`. For an HTML report:
 
