@@ -29,6 +29,7 @@ public class RabbitMqTransactionPublisherTests
         channel.IsOpen.Returns(true);
 
         var connection = Substitute.For<IConnection>();
+        connection.IsOpen.Returns(true);
         connection.CreateChannelAsync(Arg.Any<CreateChannelOptions>(), Arg.Any<CancellationToken>())
                   .Returns(channel);
 
@@ -244,14 +245,33 @@ public class RabbitMqTransactionPublisherTests
     }
 
     [Fact]
-    public async Task Closes_the_channel_and_connection_on_dispose()
+    public async Task Reopens_the_connection_when_it_has_died_rather_than_reusing_a_closed_one()
+    {
+        var h = Build();
+        await h.Publisher.PublishAsync(Event("TXN-1"));
+
+        // Recovery gave up: both the channel and the connection underneath it are gone.
+        h.Channel.IsOpen.Returns(false);
+        h.Connection.IsOpen.Returns(false);
+        await h.Publisher.PublishAsync(Event("TXN-2"));
+
+        // `_connection ??=` would have kept handing back the dead one, failing every publish forever.
+        await h.Factory.Received(2).CreateConnectionAsync(Arg.Any<CancellationToken>());
+        await h.Connection.Received(1).DisposeAsync();   // the dead one is not leaked
+    }
+
+    [Fact]
+    public async Task Closes_and_disposes_the_channel_and_connection_on_dispose()
     {
         var h = Build();
         await h.Publisher.PublishAsync(Event());
 
         await h.Publisher.DisposeAsync();
 
+        // Close performs the AMQP handshake; Dispose releases the socket and background threads.
         await h.Channel.Received(1).CloseAsync(Arg.Any<CancellationToken>());
+        await h.Channel.Received(1).DisposeAsync();
         await h.Connection.Received(1).CloseAsync(Arg.Any<CancellationToken>());
+        await h.Connection.Received(1).DisposeAsync();
     }
 }

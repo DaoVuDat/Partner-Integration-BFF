@@ -68,8 +68,14 @@ public class RabbitMqTransactionPublisher: ITransactionPublisher, IAsyncDisposab
     {
         if (_channel is { IsOpen: true }) return _channel;
 
-        // Create RabbitMQ Connection if needed
-        _connection ??= await _connectionFactory.CreateConnectionAsync(ct);
+        // A closed-but-non-null connection is not reusable — CreateChannelAsync would throw on
+        // it forever. AutomaticRecoveryEnabled handles the transient drop; this handles the case
+        // where recovery has given up and the connection is permanently dead.
+        if (_connection is not { IsOpen: true })
+        {
+            if (_connection is not null) await _connection.DisposeAsync();
+            _connection = await _connectionFactory.CreateConnectionAsync(ct);
+        }
 
 
         _channel = await _connection.CreateChannelAsync(
@@ -112,11 +118,22 @@ public class RabbitMqTransactionPublisher: ITransactionPublisher, IAsyncDisposab
         return _channel;
     }
     
-    // Free-up resources
+    // Free-up resources. Close then Dispose: CloseAsync performs the AMQP shutdown handshake,
+    // DisposeAsync releases the socket and the client's background threads.
     public async ValueTask DisposeAsync()
     {
-        if (_channel is not null) await _channel.CloseAsync();
-        if (_connection is not null) await _connection.CloseAsync();
+        if (_channel is not null)
+        {
+            await _channel.CloseAsync();
+            await _channel.DisposeAsync();
+        }
+
+        if (_connection is not null)
+        {
+            await _connection.CloseAsync();
+            await _connection.DisposeAsync();
+        }
+
         _gate.Dispose();
     }
 }

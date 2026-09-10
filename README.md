@@ -73,7 +73,7 @@ Send it again.
 dotnet test
 ```
 
-62 tests, about a second, no Docker needed.
+63 tests, about a second, no Docker needed.
 
 Coverage is collected automatically via `coverlet.runsettings`. For an HTML report:
 
