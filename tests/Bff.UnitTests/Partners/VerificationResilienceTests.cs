@@ -174,4 +174,17 @@ public class VerificationResilienceTests
 
         Assert.Equal(PartnerVerificationResult.NotVerified, result);
     }
+
+    [Fact]
+    public async Task Reports_unavailable_when_something_other_than_the_caller_cancels()
+    {
+        // The transport itself throws OperationCanceledException while the caller's token is
+        // still live — an inner cancellation nobody asked for. It must land as Unavailable,
+        // not escape as a 500. This is what the `when (!ct.IsCancellationRequested)` filter is for.
+        var handler = new FaultingHandler(() => new OperationCanceledException());
+
+        var result = await BuildWith(handler).VerifyAsync("P-1001", CancellationToken.None);
+
+        Assert.Equal(PartnerVerificationResult.Unavailable, result);
+    }
 }
