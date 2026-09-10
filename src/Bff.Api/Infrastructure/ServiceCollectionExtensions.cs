@@ -12,7 +12,10 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddPartnerVerification(this IServiceCollection services, IConfiguration config)
     {   
-        services.Configure<VerificationOptions>(config.GetSection("Verification"));
+        services.AddOptions<VerificationOptions>()
+            .Bind(config.GetSection(VerificationOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
 
         services.AddHttpClient<IPartnerVerificationClient, HttpPartnerVerificationClient>((sp, client) =>
         {

@@ -15,8 +15,11 @@ builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSingleton(TimeProvider.System);
 
-// Loading Partner Options configuration
-builder.Services.Configure<PartnerOptions>(builder.Configuration.GetSection("Partner"));
+// Loading Partner Options configuration.
+builder.Services.AddOptions<PartnerOptions>()
+    .Bind(builder.Configuration.GetSection(PartnerOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddSingleton<ICurrencyCatalog, ConfiguredCurrencyCatalog>();
 builder.Services.AddValidatorsFromAssemblyContaining<PartnerTransactionRequestValidator>();
 
@@ -24,7 +27,10 @@ builder.Services.AddValidatorsFromAssemblyContaining<PartnerTransactionRequestVa
 builder.Services.AddPartnerVerification(builder.Configuration);
 
 // Message queue Configuration
-builder.Services.Configure<RabbitMqOptions>(builder.Configuration.GetSection(RabbitMqOptions.SectionName));
+builder.Services.AddOptions<RabbitMqOptions>()
+    .Bind(builder.Configuration.GetSection(RabbitMqOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
 builder.Services.AddSingleton<IConnectionFactory>(sp =>
 {
     var o = sp.GetRequiredService<IOptions<RabbitMqOptions>>().Value;
