@@ -1,4 +1,5 @@
 using Bff.Api.Contracts;
+using Bff.Api.Message;
 using Bff.Api.Partners;
 using FluentValidation;
 
@@ -18,6 +19,8 @@ public static class PartnerTransactionEndpoints
         PartnerTransactionRequest request,
         IValidator<PartnerTransactionRequest> validator,
         IPartnerVerificationClient verificationClient,
+        ITransactionPublisher publisher,
+        TimeProvider clock,
         ILogger<PartnerTransactionRequest> logger,
         CancellationToken ct)
     {
@@ -46,8 +49,9 @@ public static class PartnerTransactionEndpoints
                 statusCode: StatusCodes.Status422UnprocessableEntity);
         
         
-        // TODO: send to the message broker
-        
+        // Publish message to queue
+        var message = PartnerTransactionAccepted.From(request, clock.GetUtcNow());
+        await publisher.PublishAsync(message, ct);
         
         // Response to client with status code 202
         return Results.Accepted(value: new
